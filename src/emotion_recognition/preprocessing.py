@@ -45,9 +45,16 @@ def load_labeled_openface_csv(path: str | Path) -> pd.DataFrame:
     source = Path(path)
     metadata = parse_ravdess_filename(source)
     selected = select_openface_features(pd.read_csv(source))
-    selected["emotion"] = metadata.emotion
+    selected = attach_emotion_label(selected, metadata.emotion)
     selected["source_video"] = source.name
     return selected
+
+
+def attach_emotion_label(frame: pd.DataFrame, emotion: str) -> pd.DataFrame:
+    """Return a copy of feature rows with one source emotion label."""
+    labeled = frame.copy()
+    labeled["emotion"] = emotion
+    return labeled
 
 
 def combine_openface_csvs(directory: str | Path) -> pd.DataFrame:
