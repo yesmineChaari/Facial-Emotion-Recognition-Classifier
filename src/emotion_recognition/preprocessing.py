@@ -37,7 +37,13 @@ def select_openface_features(frame: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("No supported OpenFace feature columns were found")
     selected = frame[columns].copy()
     selected.columns = [column.strip() for column in selected.columns]
-    return selected.apply(pd.to_numeric, errors="coerce")
+    return clean_feature_frame(selected)
+
+
+def clean_feature_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Convert selected feature columns to numeric values for modeling."""
+    cleaned = frame.copy()
+    return cleaned.apply(pd.to_numeric, errors="coerce")
 
 
 def load_labeled_openface_csv(path: str | Path) -> pd.DataFrame:
