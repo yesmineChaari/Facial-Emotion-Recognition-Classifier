@@ -75,6 +75,8 @@ def prepare_dataset(frame: pd.DataFrame, *, test_size: float = 0.25, random_seed
     """Encode labels, split deterministically, and scale training data only."""
     if "emotion" not in frame.columns:
         raise ValueError("Dataset must contain an emotion column")
+    if not 0 < test_size < 1:
+        raise ValueError("test_size must be between 0 and 1")
     features = frame.drop(columns=["emotion", "source_video"], errors="ignore")
     features = features.select_dtypes(include="number").replace([float("inf"), -float("inf")], pd.NA)
     features = features.fillna(features.median(numeric_only=True))
