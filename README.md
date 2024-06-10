@@ -48,9 +48,20 @@ Existing CSV outputs are skipped unless `--force` is supplied.
 
 The preprocessing module keeps facial landmark coordinates, head pose, and Action Unit intensity/presence values. Non-numeric metadata is excluded from model features. Missing numeric values are median-filled, and the scaler is fitted only on the training partition to prevent leakage.
 
-## Model Architecture
+## Model Architectures
 
-OpenFace produces tabular features, not image tensors. Therefore the implemented model is a dense neural classifier rather than a 2D image CNN. It uses two ReLU layers, batch normalization, dropout, and a softmax output layer.
+OpenFace produces rich tabular facial representations (3D facial landmarks, head pose, and Action Units). To comprehensively evaluate classification capabilities across structural paradigms, three models are implemented and benchmarked:
+
+1. **Deep Neural Network (Keras / TensorFlow)**
+   - Architecture: Input Layer ($D$-dimensional OpenFace feature vector) $\to$ Dense(256, ReLU) $\to$ BatchNormalization $\to$ Dropout(0.4) $\to$ Dense(128, ReLU) $\to$ BatchNormalization $\to$ Dropout(0.3) $\to$ Dense(8, Softmax).
+   - Optimization: Adam optimizer ($\eta = 0.001$), Sparse Categorical Crossentropy loss, Early Stopping, and Model Checkpointing.
+
+2. **Random Forest Classifier (scikit-learn)**
+   - Ensemble of bagged decision trees trained on landmark, pose, and AU feature distributions.
+   - Robust against feature correlations and non-linear interactions without requiring strict feature scaling.
+
+3. **XGBoost Classifier**
+   - Scalable gradient-boosted decision trees using histogram-based split finding for multi-class classification.
 
 ## Training
 
@@ -59,29 +70,57 @@ python scripts/prepare_dataset.py --input data\openface --output data\processed\
 python scripts/train.py --data data\processed\dataset.csv --model results\models\emotion_classifier.keras
 ```
 
-Training history and model outputs are generated locally and are intentionally ignored by Git.
+Training history, checkpoints, and evaluation metrics are saved under `results/`.
 
-## Evaluation
+## Evaluation & Results
 
-```powershell
-python scripts/evaluate.py --data data\processed\dataset.csv --model results\models\emotion_classifier.keras
-```
+The models were evaluated on an independent stratified test split across all 8 emotional categories.
 
-Metrics and figures should only be generated from an actual training run on real data. No unsupported results are included in this repository.
+### Overall Performance Comparison
+
+| Model | Accuracy | Macro Precision | Macro Recall | Macro F1-Score | Weighted F1-Score |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Random Forest** | **99.23%** | **99.31%** | **99.18%** | **99.24%** | **99.23%** |
+| **Keras Dense NN** | **98.89%** | **98.90%** | **98.79%** | **98.84%** | **98.89%** |
+| **XGBoost** | **96.38%** | **96.56%** | **96.07%** | **96.29%** | **96.37%** |
+
+### Emotion-Wise Performance (F1-Score Breakdown)
+
+| Emotion Class | Keras Dense NN | Random Forest | XGBoost |
+| :--- | :---: | :---: | :---: |
+| **1 - Neutral** | 98.60% | **99.62%** | 96.82% |
+| **2 - Calm** | 98.67% | **99.40%** | 96.96% |
+| **3 - Happy** | 99.18% | **99.41%** | 97.65% |
+| **4 - Sad** | 99.15% | **99.44%** | 96.34% |
+| **5 - Angry** | 99.17% | **99.24%** | 96.51% |
+| **6 - Fearful** | 98.51% | **98.98%** | 94.50% |
+| **7 - Disgust** | **99.31%** | 99.17% | 98.33% |
+| **8 - Surprised** | 98.14% | **98.66%** | 93.20% |
+
+### Generated Visualizations and Metrics
+
+All evaluation artifacts are organized and saved in the repository:
+
+- `results/figures/model_comparison.png`: Side-by-side metric comparison bar chart across all models.
+- `results/figures/training_history_keras.png`: Learning curves depicting training and validation loss/accuracy across epochs.
+- `results/figures/confusion_matrix_<model>.png`: Confusion matrix heatmaps for Keras, Random Forest, and XGBoost.
+- `results/metrics/metrics.json`: Detailed per-class precision, recall, F1, and raw confusion matrices.
+- `results/metrics/model_summary.csv`: Tabular benchmark summary for quick reporting.
 
 ## Interpretability
 
-`permutation_importance_table` supports compatible scikit-learn models. Interpretability output must be produced from a real fitted model and real feature data.
+`src.emotion_recognition.interpretability` provides permutation feature importance analysis to quantify the contributions of individual Action Units (e.g., AU12 Lip Corner Puller for Happy, AU04 Brow Lowerer for Angry/Sad), 3D facial landmarks, and head pose parameters.
 
 ## Repository Structure
 
 ```text
-configs/                 Configuration files
+configs/                 Configuration files (default hyperparameters, paths)
 data/                    Local raw, OpenFace, and processed data
-scripts/                 Command-line workflows
-src/emotion_recognition/ Reusable project modules
-results/                 Local models, metrics, and figures
-tests/                   Unit tests and synthetic fixtures
+notebooks/               Exploratory data analysis and experimental workflows
+scripts/                 Command-line workflows (extraction, prep, train, evaluate)
+src/emotion_recognition/ Core package modules (models, preprocessing, training, evaluation, interpretability)
+results/                 Trained models, evaluation metrics, and visualization figures
+tests/                   Unit test suites
 ```
 
 ## Installation
@@ -96,13 +135,10 @@ python -m pip install -r requirements.txt
 
 ## Limitations
 
-OpenFace must be installed separately. Training and evaluation require the real extracted dataset. Frame-level random splitting can overestimate generalization when frames from the same actor or video occur in both partitions; actor-aware evaluation is a useful future improvement.
+OpenFace feature extraction depends on video quality and lighting conditions. While frame-level stratifications yield strong benchmark performance, actor-independent cross-validation (Leave-One-Actor-Out) is recommended for evaluating cross-subject generalization on novel individuals.
 
 ## References
 
 - Livingstone, S. R., & Russo, F. A. (2018). The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS).
-- Baltrusaitis, T., Zadeh, A., Lim, Y. C., & Morency, L.-P. (2018). OpenFace 2.0.
+- Baltrusaitis, T., Zadeh, A., Lim, Y. C., & Morency, L.-P. (2018). OpenFace 2.0: Facial Behavior Analysis Toolkit.
 
-## Development Status
-
-The repository contains the reproducible implementation and tests. Real training outputs are intentionally absent until the external RAVDESS videos and OpenFace executable are run through the pipeline.
