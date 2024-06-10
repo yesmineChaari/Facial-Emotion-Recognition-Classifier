@@ -102,3 +102,7 @@ OpenFace must be installed separately. Training and evaluation require the real 
 
 - Livingstone, S. R., & Russo, F. A. (2018). The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS).
 - Baltrusaitis, T., Zadeh, A., Lim, Y. C., & Morency, L.-P. (2018). OpenFace 2.0.
+
+## Development Status
+
+The repository contains the reproducible implementation and tests. Real training outputs are intentionally absent until the external RAVDESS videos and OpenFace executable are run through the pipeline.
